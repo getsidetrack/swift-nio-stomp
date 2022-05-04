@@ -1,0 +1,10 @@
+.DS_Store
+/.build
+.swiftpm
+
+xcuserdata/
+DerivedData/
+
+# The example which exists at the moment utilises a private API which cannot yet be shared.
+# In the future, I hope to generate a lightweight STOMP broker which we can use for testing and demonstration purposes.
+Example/
