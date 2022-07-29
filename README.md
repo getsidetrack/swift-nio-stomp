@@ -19,6 +19,7 @@ While the project does work, there's a lot of room to improve (pull requests acc
 - There appears an unknown frame decoding issue affecting ~0.8% of messages causing the data to be incomplete.
 - Receipts are currently unsupported.
 - Add `client-auto` ack mode (`client-individual` but automatically acknowledged once successfully processed by this package)
+
 - Add full suite of unit tests (including performance tests)
 - Add integration test using mock STOMP broker
 - Add full DocC documentation

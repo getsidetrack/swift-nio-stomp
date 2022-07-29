@@ -11,7 +11,7 @@ public struct StompHeaders {
     let lookup: StompHeaderDictionary
     
     public subscript(dynamicMember member: StompHeaderKey) -> String? {
-        lookup[member]
+        lookup[member] ?? nil
     }
     
     public var allValues: StompHeaderDictionary {
@@ -19,4 +19,4 @@ public struct StompHeaders {
     }
 }
 
-public typealias StompHeaderDictionary = [StompHeaderKey: String]
+public typealias StompHeaderDictionary = [StompHeaderKey: String?]

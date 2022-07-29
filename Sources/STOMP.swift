@@ -55,9 +55,13 @@ public final class STOMP: StompExecutable {
     
     // MARK: - Public
     
-    public func connect(username: String, password: String) async throws {
+    public func connect(
+        username: String? = nil,
+        password: String? = nil,
+        headers: StompHeaderDictionary = [:]
+    ) async throws {
         logger.debug("connection requested")
-        try await self.connection.connect(username: username, password: password, heartbeat: heartbeat, headers: [:])
+        try await self.connection.connect(username: username, password: password, heartbeat: heartbeat, headers: headers)
         setupHeartbeat()
     }
     

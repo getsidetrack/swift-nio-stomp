@@ -14,11 +14,14 @@ struct StompFrameEncoder: MessageToByteEncoder {
         out.writeString(data.command.rawValue)
         out.writeBytes([LINEFEED_BYTE])
         
-        for header in data.headers.lookup {
-            out.writeString(header.key.description)
-            out.writeBytes([COLON_BYTE])
-            out.writeString(header.value)
-            out.writeBytes([LINEFEED_BYTE])
+        for header in data.headers.lookup where header.value != nil {
+            // filter out nil values
+            if let value = header.value {
+                out.writeString(header.key.description)
+                out.writeBytes([COLON_BYTE])
+                out.writeString(value)
+                out.writeBytes([LINEFEED_BYTE])
+            }
         }
         
         out.writeBytes([LINEFEED_BYTE])

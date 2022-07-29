@@ -61,8 +61,8 @@ internal final class StompConnection {
     }
     
     func connect(
-        username: String,
-        password: String,
+        username: String?,
+        password: String?,
         version: String = "1.2",
         heartbeat: StompHeartbeat?,
         headers: StompHeaderDictionary
