@@ -24,6 +24,11 @@ public enum StompHeaderKey: Hashable, CustomStringConvertible, ExpressibleByStri
     
     case custom(String)
     
+    static var allCases: [StompHeaderKey] = [
+        .contentLength, .contentType, .ack, .transaction, .id, .receipt, .receiptId,
+        .destination, .acceptVersion, .heartbeat, .login, .passcode, .subscription, .session
+    ]
+    
     // MARK: - Public
     
     public init(stringLiteral value: String) {
@@ -38,7 +43,7 @@ public enum StompHeaderKey: Hashable, CustomStringConvertible, ExpressibleByStri
     
     init(value: String) {
         let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        self = .custom(key)
+        self = Self.allCases.first(where: { $0.key == value }) ?? .custom(key)
     }
     
     var key: String {
