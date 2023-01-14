@@ -36,17 +36,17 @@ public enum StompHeaderKey: Hashable, CustomStringConvertible, ExpressibleByStri
     public init(stringLiteral value: String) {
         self.init(value: value)
     }
+
+    public init(value: String) {
+        let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        self = Self.allCases.first(where: { $0.key == value }) ?? .custom(key)
+    }
     
     public var description: String {
         key
     }
     
     // MARK: - Internal
-    
-    init(value: String) {
-        let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        self = Self.allCases.first(where: { $0.key == value }) ?? .custom(key)
-    }
     
     var key: String {
         switch self {
