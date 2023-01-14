@@ -17,6 +17,10 @@ public struct StompHeaders {
     public var allValues: StompHeaderDictionary {
         lookup
     }
+
+    public init(headers: StompHeaderDictionary) {
+        self.lookup = headers
+    }
 }
 
 public typealias StompHeaderDictionary = [StompHeaderKey: String?]
