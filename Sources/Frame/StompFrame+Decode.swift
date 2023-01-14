@@ -61,7 +61,10 @@ struct StompFrameDecoder: ByteToMessageDecoder {
         }
         
         guard let command = extractCommand(lines: &lines) else {
-            print("🔴", remainingString)
+            if remainingString.trimmingCharacters(in: .whitespacesAndNewlines) != "" {
+                print("🔴", remainingString, lines)
+            }
+            
             return nil
         }
         

@@ -21,12 +21,14 @@ public enum StompHeaderKey: Hashable, CustomStringConvertible, ExpressibleByStri
     case passcode
     case subscription
     case session
+    case messageId
     
     case custom(String)
     
     static var allCases: [StompHeaderKey] = [
         .contentLength, .contentType, .ack, .transaction, .id, .receipt, .receiptId,
-        .destination, .acceptVersion, .heartbeat, .login, .passcode, .subscription, .session
+        .destination, .acceptVersion, .heartbeat, .login, .passcode, .subscription, .session,
+        .messageId
     ]
     
     // MARK: - Public
@@ -76,6 +78,8 @@ public enum StompHeaderKey: Hashable, CustomStringConvertible, ExpressibleByStri
             return "subscription"
         case .session:
             return "session"
+        case .messageId:
+            return "message-id"
         case .custom(let value):
             return value
         }
