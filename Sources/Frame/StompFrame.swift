@@ -39,7 +39,7 @@ public class StompClientFrame {
         body: Data?
     ) {
         self.command = command
-        self.headers = .init(lookup: headers)
+        self.headers = .init(headers: headers)
         self.body = body ?? Data()
     }
 }
