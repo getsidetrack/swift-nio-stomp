@@ -28,11 +28,6 @@ internal final class StompConnection {
     
     private func start() async throws {
         handler.communication = communication
-        let handlers: [ChannelHandler] = [
-            MessageToByteHandler(StompFrameEncoder()),
-            ByteToMessageHandler(StompFrameDecoder(executable: commandable)),
-            handler,
-        ]
         
         try await ClientBootstrap(group: eventLoopGroup)
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
@@ -41,7 +36,15 @@ internal final class StompConnection {
             .channelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .channelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
             .channelOption(ChannelOptions.connectTimeout, value: TimeAmount.seconds(8))
-            .channelInitializer { $0.pipeline.addHandlers(handlers) }
+            .channelInitializer {
+                let handlers: [ChannelHandler] = [
+                    MessageToByteHandler(StompFrameEncoder()),
+                    ByteToMessageHandler(StompFrameDecoder(executable: self.commandable)),
+                    self.handler,
+                ]
+                
+                return $0.pipeline.addHandlers(handlers)
+            }
             .connect(host: host, port: port)
             .map { channel in
                 self.channel = channel
