@@ -34,9 +34,9 @@ internal final class StompConnection {
 //            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
 //            .channelOption(ChannelOptions.socketOption(.so_keepalive), value: 1)
 //            .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
-//            .channelOption(ChannelOptions.maxMessagesPerRead, value: 16)
-//            .channelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
-//            .channelOption(ChannelOptions.connectTimeout, value: TimeAmount.seconds(8))
+            .channelOption(ChannelOptions.maxMessagesPerRead, value: 16)
+            .channelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
+            .channelOption(ChannelOptions.connectTimeout, value: TimeAmount.seconds(8))
             .channelInitializer {
                 print("channelInitializer called")
                 return $0.pipeline.addHandlers([
