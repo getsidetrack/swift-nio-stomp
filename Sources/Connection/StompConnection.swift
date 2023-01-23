@@ -32,8 +32,8 @@ internal final class StompConnection {
         print("starting")
         let bootstrap = ClientBootstrap(group: eventLoopGroup)
 //            .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
-//            .channelOption(ChannelOptions.socketOption(.so_keepalive), value: 1)
-            .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1)
+           .channelOption(ChannelOptions.socketOption(.so_keepalive), value: 1)
+            // .channelOption(ChannelOptions.socketOption(.tcp_nodelay), value: 1) // BREAKS BUILD
             .channelOption(ChannelOptions.maxMessagesPerRead, value: 16)
             .channelOption(ChannelOptions.recvAllocator, value: AdaptiveRecvByteBufferAllocator())
             .channelOption(ChannelOptions.connectTimeout, value: TimeAmount.seconds(8))
