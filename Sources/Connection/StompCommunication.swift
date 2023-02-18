@@ -13,6 +13,7 @@ final class StompCommunication {
     private let logger = Logger(label: LABEL_PREFIX + ".communication")
     
     var subscriptions = [String: StompMessageCallback]()
+    var continuations = [String: UnsafeContinuation<Void, Never>]()
     
     func onError(_ error: Error) {
         logger.error("error: \(error.localizedDescription)")
@@ -24,6 +25,31 @@ final class StompCommunication {
                 "session": .string(frame.headers.session ?? "unknown")
             ])
             
+            return
+        }
+        
+        if frame.command == .RECEIPT {
+            guard let id = frame.headers.allValues[.receiptId] ?? nil else {
+                logger.warning("receipt received with no identifier")
+                return
+            }
+            
+            guard let continuation = continuations[id] else {
+                logger.warning("receipt received with no continuation pending", metadata: [
+                    "receipt": .string(id)
+                ])
+                
+                return
+            }
+            
+            logger.debug("resuming continuation for receipt with ID: \(id)", metadata: [
+                "receipt": .string(id)
+            ])
+            
+            continuation.resume()
+            
+            // cleanup memory
+            continuations[id] = nil
             return
         }
         
@@ -47,7 +73,12 @@ final class StompCommunication {
         }
         
         Task.detached {
-            try await callback(frame)
+            do {
+                try await callback(frame)
+            } catch {
+                frameErrorCounter.increment()
+                self.logger.report(error: error)
+            }
         }
     }
 }

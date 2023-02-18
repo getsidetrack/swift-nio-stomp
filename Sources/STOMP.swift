@@ -92,28 +92,44 @@ public final class STOMP: StompExecutable {
         logger.debug("subscription requested")
         
         let id = id ?? UUID().uuidString
+        let receipt = "subscribe-" + UUID().uuidString
         
         let headers = defaultHeaders.adding(headers).adding([
             .id: id,
             .ack: ack.rawValue,
             .destination: destination,
+            .receipt: receipt,
         ])
         
-        try await send(command: .SUBSCRIBE, headers: headers, body: nil)
-        // TODO: should this await receipt?
         communication.subscriptions[id] = closure
+        try await send(command: .SUBSCRIBE, headers: headers, body: nil)
+        try await awaitReceipt(receipt: receipt)
         
         return StompSubscription(stomp: self, subscriptionId: id)
     }
     
     public func send(command: StompCommand, headers: StompHeaderDictionary, body: Data?) async throws {
+        let receipt = UUID().uuidString
+        let headers = defaultHeaders.adding(headers).adding(
+            waitForReceipt ? [ .receipt: receipt ] : [:]
+        )
+        
         let frame = StompClientFrame(command: command, headers: headers, body: body)
         try await connection.send(frame: frame)
+        
+        if waitForReceipt {
+            try await awaitReceipt(receipt: receipt)
+        }
     }
     
-    internal func awaitReceipt(receipt _: String) async throws {
-        // TODO: add ability to generate EventLoopPromise confirming receipt
-        // TODO: support timeout of receipts (error)
+    internal func awaitReceipt(receipt: String) async throws {
+        await withUnsafeContinuation { continuation in
+            logger.debug("awaiting receipt with ID: \(receipt)", metadata: [
+                "receipt": .string(receipt)
+            ])
+            
+            communication.continuations[receipt] = continuation
+        }
     }
     
     var heartbeatTask: RepeatedTask?

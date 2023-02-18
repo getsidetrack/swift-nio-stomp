@@ -15,3 +15,4 @@ let SPACE_BYTE: UInt8 = 0x20
 let LABEL_PREFIX: String = "com.getsidetrack.stomp"
 
 let frameCounter = Counter(label: "stomp_frames_processed")
+let frameErrorCounter = Counter(label: "stomp_frames_processed_errors")
