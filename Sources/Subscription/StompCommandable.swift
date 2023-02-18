@@ -31,6 +31,8 @@ struct StompTransaction: StompCommandable {
 }
 
 public protocol StompExecutable {
+    func subscribe(destination: String, id: String?, ack: StompAckMode, headers: StompHeaderDictionary, onMessage closure: @escaping StompMessageCallback) async throws -> StompCommandable
+    func cleanupSubscription(id: String)
     func send(command: StompCommand, headers: StompHeaderDictionary, body: Data?) async throws
     func disconnect() async throws
 }

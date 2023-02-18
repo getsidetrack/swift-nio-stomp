@@ -28,7 +28,7 @@ public enum StompHeaderKey: Hashable, CustomStringConvertible, ExpressibleByStri
     static var allCases: [StompHeaderKey] = [
         .contentLength, .contentType, .ack, .transaction, .id, .receipt, .receiptId,
         .destination, .acceptVersion, .heartbeat, .login, .passcode, .subscription, .session,
-        .messageId
+        .messageId,
     ]
     
     // MARK: - Public

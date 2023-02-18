@@ -13,6 +13,7 @@ final class StompCommunication {
     private let logger = Logger(label: LABEL_PREFIX + ".communication")
     
     var subscriptions = [String: StompMessageCallback]()
+    var recoverableSubscriptions = [StompRecoverableSubscription]()
     var continuations = [String: UnsafeContinuation<Void, Never>]()
     
     func onError(_ error: Error) {
@@ -22,7 +23,7 @@ final class StompCommunication {
     func onFrame(_ frame: StompFrame) {
         if frame.command == .CONNECTED {
             logger.notice("STOMP client is connected.", metadata: [
-                "session": .string(frame.headers.session ?? "unknown")
+                "session": .string(frame.headers.session ?? "unknown"),
             ])
             
             return
@@ -36,14 +37,14 @@ final class StompCommunication {
             
             guard let continuation = continuations[id] else {
                 logger.warning("receipt received with no continuation pending", metadata: [
-                    "receipt": .string(id)
+                    "receipt": .string(id),
                 ])
                 
                 return
             }
             
             logger.debug("resuming continuation for receipt with ID: \(id)", metadata: [
-                "receipt": .string(id)
+                "receipt": .string(id),
             ])
             
             continuation.resume()
@@ -57,7 +58,7 @@ final class StompCommunication {
         
         guard let subscriptionId = frame.headers.subscription else {
             logger.debug("message received bound to no subscription", metadata: [
-                "command": .string(frame.command.rawValue)
+                "command": .string(frame.command.rawValue),
             ])
             
             return
@@ -66,7 +67,7 @@ final class StompCommunication {
         guard let callback = subscriptions[subscriptionId] else {
             logger.warning("message sent to unknown subscription", metadata: [
                 "command": .string(frame.command.rawValue),
-                "subscription": .string(subscriptionId)
+                "subscription": .string(subscriptionId),
             ])
             
             return

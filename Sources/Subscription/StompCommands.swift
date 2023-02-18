@@ -131,6 +131,8 @@ public extension StompCommandable {
             throw StompError.missingSubscription
         }
         
+        stomp.cleanupSubscription(id: subscriptionId)
+        
         let headers = baseHeaders.adding(headers).adding([
             .id: subscriptionId,
         ])

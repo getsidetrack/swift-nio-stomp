@@ -16,3 +16,4 @@ let LABEL_PREFIX: String = "com.getsidetrack.stomp"
 
 let frameCounter = Counter(label: "stomp_frames_processed")
 let frameErrorCounter = Counter(label: "stomp_frames_processed_errors")
+let connectionCounter = Counter(label: "stomp_connection_count")

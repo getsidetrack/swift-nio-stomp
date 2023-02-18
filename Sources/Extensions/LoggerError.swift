@@ -36,7 +36,7 @@ extension Logger {
             level = .warning
         }
         
-        self.log(
+        log(
             level: level,
             .init(stringLiteral: reason),
             file: source?.file ?? file,
@@ -88,7 +88,7 @@ extension ErrorSource {
         column: UInt = #column,
         range: Range<UInt>? = nil
     ) -> Self {
-        return self.init(
+        self.init(
             file: file,
             function: function,
             line: line,

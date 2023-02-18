@@ -5,9 +5,9 @@
 //
 
 import Foundation
+import Logging
 import NIOCore
 import NIOPosix
-import Logging
 
 internal final class StompConnection {
     let host: String
@@ -22,14 +22,22 @@ internal final class StompConnection {
         self.port = port
         self.eventLoopGroup = eventLoopGroup
         self.communication = communication
+        
+        handler.connection = self
     }
     
     private let logger = Logger(label: LABEL_PREFIX + ".connection")
     
     let handler = StompHandler()
     var channel: Channel?
+    private var isInStartupLoop: Bool = false
     
     private func start() async throws {
+        if let channel, channel.isActive, channel.isWritable {
+            logger.info("unnecessarily attempting to start STOMP connection")
+            return
+        }
+        
         handler.communication = communication
         
         let bootstrap = ClientBootstrap(group: eventLoopGroup)
@@ -46,10 +54,11 @@ internal final class StompConnection {
         
         do {
             logger.info("making connection attempt to \(host):\(port)")
+            connectionCounter.increment()
             channel = try await bootstrap.connect(host: host, port: port).get()
         } catch let error as NIOConnectionError {
             // map down to the first connection error as it's usually enough
-            throw error.connectionErrors.map { $0.error }.first ?? error
+            throw error.connectionErrors.map(\.error).first ?? error
         }
     }
     
@@ -71,6 +80,9 @@ internal final class StompConnection {
         heartbeat: StompHeartbeat?,
         headers: StompHeaderDictionary
     ) async throws {
+        isInStartupLoop = true
+        defer { isInStartupLoop = false }
+        
         try await Task.retrying {
             try await self.start()
         }.value
@@ -94,5 +106,35 @@ internal final class StompConnection {
         }
         
         try await channel.writeAndFlush(frame)
+    }
+    
+    func recoverConnection() {
+        guard isInStartupLoop == false else {
+            return
+        }
+        isInStartupLoop = true
+        
+        Task.detached {
+            defer { self.isInStartupLoop = false }
+            
+            try await Task.retrying {
+                try await self.start()
+            }.value
+            
+            for subscription in self.communication.recoverableSubscriptions {
+                guard let callback = self.communication.subscriptions[subscription.id] else {
+                    self.logger.warning("unable to identify callback for subscription with ID \(subscription.id)")
+                    continue
+                }
+                
+                _ = try await self.commandable.stomp.subscribe(
+                    destination: subscription.destination,
+                    id: subscription.id,
+                    ack: subscription.ack,
+                    headers: subscription.headers,
+                    onMessage: callback
+                )
+            }
+        }
     }
 }

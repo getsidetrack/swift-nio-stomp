@@ -22,12 +22,12 @@ func withTimeout<R>(
     operation: @escaping @Sendable () async throws -> R
 ) async throws -> R {
     // sourced from: https://forums.swift.org/t/running-an-async-task-with-a-timeout/49733/13
-    return try await withThrowingTaskGroup(of: R.self) { group in
+    try await withThrowingTaskGroup(of: R.self) { group in
         let deadline = Date(timeIntervalSinceNow: seconds)
 
         // Start actual work.
         group.addTask {
-            return try await operation()
+            try await operation()
         }
         // Start timeout child task.
         group.addTask {
@@ -52,7 +52,7 @@ extension Task where Failure == Error {
     static func retrying(
         priority: TaskPriority? = nil,
         maxRetryCount: Int = .max,
-        retryDelay: TimeInterval = 1,
+        retryDelay _: TimeInterval = 1,
         operation: @escaping @Sendable () async throws -> Success
     ) async throws -> Task {
         let logger = Logger(label: LABEL_PREFIX + ".retrying")
@@ -67,7 +67,7 @@ extension Task where Failure == Error {
                     
                     logger.error("\(error)", metadata: [
                         "retryIndex": .stringConvertible(i),
-                        "delay": .stringConvertible(delay)
+                        "delay": .stringConvertible(delay),
                     ])
                     
                     try await Task<Never, Never>.sleep(nanoseconds: UInt64(delay))
@@ -80,9 +80,9 @@ extension Task where Failure == Error {
     }
     
     static func getDelay(for n: Int) -> Int {
-        let maxDelay = 300000 // 5 minutes
+        let maxDelay = 300_000 // 5 minutes
         let delay = Int(pow(2.0, Double(n))) * 1000
-        let jitter = Int.random(in: 0...1000)
+        let jitter = Int.random(in: 0 ... 1000)
         return min(delay + jitter, maxDelay)
     }
 }

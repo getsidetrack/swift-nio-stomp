@@ -4,10 +4,10 @@
 // Copyright 2022 • Sidetrack Tech Limited
 //
 
+import CoreMetrics
 import Foundation
 import Logging
 import NIOCore
-import CoreMetrics
 
 typealias STOMPMessageReceived = (StompFrame) -> Void
 typealias STOMPErrorCaught = (Error) -> Void
@@ -19,8 +19,9 @@ final class StompHandler: ChannelInboundHandler, RemovableChannelHandler {
     private let logger = Logger(label: LABEL_PREFIX + ".handler")
     
     var communication: StompCommunication?
+    weak var connection: StompConnection?
     
-    func channelRead(context: ChannelHandlerContext, data: NIOAny) {
+    func channelRead(context _: ChannelHandlerContext, data: NIOAny) {
         let frame = unwrapInboundIn(data)
         communication?.onFrame(frame)
     }
@@ -42,12 +43,13 @@ final class StompHandler: ChannelInboundHandler, RemovableChannelHandler {
     func handlerRemoved(context: ChannelHandlerContext) {
         getMetric(forContext: context).record(0)
         logger.debug("handler was removed \(context.name)")
+        connection?.recoverConnection()
     }
     
     func getMetric(forContext context: ChannelHandlerContext) -> Gauge {
         Gauge(label: "stomp_connection_status", dimensions: [
             ("address", context.remoteAddress?.description ?? ""),
-            ("name", context.name)
+            ("name", context.name),
         ])
     }
 }

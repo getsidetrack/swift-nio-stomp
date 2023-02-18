@@ -49,8 +49,8 @@ public final class STOMP: StompExecutable {
         let communication = StompCommunication()
         
         self.communication = communication
-        self.connection = StompConnection(host: host, port: port, eventLoopGroup: eventLoopGroup, communication: communication)
-        self.connection.commandable = StompSubscription(stomp: self, subscriptionId: nil)
+        connection = StompConnection(host: host, port: port, eventLoopGroup: eventLoopGroup, communication: communication)
+        connection.commandable = StompSubscription(stomp: self, subscriptionId: nil)
     }
     
     // MARK: - Public
@@ -61,7 +61,7 @@ public final class STOMP: StompExecutable {
         headers: StompHeaderDictionary = [:]
     ) async throws {
         logger.debug("STOMP connection requested")
-        try await self.connection.connect(username: username, password: password, heartbeat: heartbeat, headers: headers)
+        try await connection.connect(username: username, password: password, heartbeat: heartbeat, headers: headers)
         setupHeartbeat()
     }
     
@@ -94,6 +94,13 @@ public final class STOMP: StompExecutable {
         let id = id ?? UUID().uuidString
         let receipt = "subscribe-" + UUID().uuidString
         
+        let recovery = StompRecoverableSubscription(
+            destination: destination,
+            id: id,
+            ack: ack,
+            headers: headers
+        )
+        
         let headers = defaultHeaders.adding(headers).adding([
             .id: id,
             .ack: ack.rawValue,
@@ -101,11 +108,17 @@ public final class STOMP: StompExecutable {
             .receipt: receipt,
         ])
         
+        communication.recoverableSubscriptions.append(recovery)
         communication.subscriptions[id] = closure
         try await send(command: .SUBSCRIBE, headers: headers, body: nil)
         try await awaitReceipt(receipt: receipt)
         
         return StompSubscription(stomp: self, subscriptionId: id)
+    }
+    
+    public func cleanupSubscription(id: String) {
+        communication.recoverableSubscriptions.removeAll(where: { $0.id == id })
+        communication.subscriptions[id] = nil
     }
     
     public func send(command: StompCommand, headers: StompHeaderDictionary, body: Data?) async throws {
@@ -126,7 +139,7 @@ public final class STOMP: StompExecutable {
         let block: @Sendable () async throws -> Void = {
             await withUnsafeContinuation { continuation in
                 self.logger.debug("awaiting receipt with ID: \(receipt)", metadata: [
-                    "receipt": .string(receipt)
+                    "receipt": .string(receipt),
                 ])
                 
                 self.communication.continuations[receipt] = continuation
@@ -164,4 +177,11 @@ public final class STOMP: StompExecutable {
             return promise.futureResult
         }
     }
+}
+
+struct StompRecoverableSubscription {
+    let destination: String
+    let id: String
+    let ack: StompAckMode
+    let headers: StompHeaderDictionary
 }
