@@ -136,6 +136,11 @@ public final class STOMP: StompExecutable {
     }
     
     internal func awaitReceipt(receipt: String) async throws {
+        if communication.receiptsMissed.contains(receipt) {
+            communication.receiptsMissed.removeAll(where: { $0 == receipt })
+            return
+        }
+
         let block: @Sendable () async throws -> Void = {
             await withUnsafeContinuation { continuation in
                 self.logger.debug("awaiting receipt with ID: \(receipt)", metadata: [

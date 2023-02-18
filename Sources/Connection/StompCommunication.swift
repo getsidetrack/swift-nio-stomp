@@ -15,6 +15,7 @@ final class StompCommunication {
     var subscriptions = [String: StompMessageCallback]()
     var recoverableSubscriptions = [StompRecoverableSubscription]()
     var continuations = [String: UnsafeContinuation<Void, Never>]()
+    var receiptsMissed = [String]()
     
     func onError(_ error: Error) {
         logger.error("error: \(error.localizedDescription)")
@@ -40,6 +41,7 @@ final class StompCommunication {
                     "receipt": .string(id),
                 ])
                 
+                receiptsMissed.append(id)
                 return
             }
             
