@@ -12,7 +12,7 @@ extension Logger {
     ///
     /// - parameters:
     ///     - error: `Error` to log.
-    public func report(
+    func report(
         error: Error,
         file: String = #file,
         function: String = #function,
@@ -47,24 +47,24 @@ extension Logger {
 }
 
 /// A source-code location.
-public struct ErrorSource {
+struct ErrorSource {
     /// File in which this location exists.
-    public var file: String
+    var file: String
 
     /// Function in which this location exists.
-    public var function: String
+    var function: String
 
     /// Line number this location belongs to.
-    public var line: UInt
+    var line: UInt
 
     /// Number of characters into the line this location starts at.
-    public var column: UInt
+    var column: UInt
 
     /// Optional start/end range of the source.
-    public var range: Range<UInt>?
+    var range: Range<UInt>?
 
     /// Creates a new `SourceLocation`
-    public init(
+    init(
         file: String,
         function: String,
         line: UInt,
@@ -81,7 +81,7 @@ public struct ErrorSource {
 
 extension ErrorSource {
     /// Creates a new `ErrorSource` for the current call site.
-    public static func capture(
+    static func capture(
         file: String = #file,
         function: String = #function,
         line: UInt = #line,

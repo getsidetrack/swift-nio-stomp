@@ -32,7 +32,7 @@ public final class STOMP: StompExecutable {
     /// Determines the number of seconds to wait before failing a receipt check.
     ///
     /// When `nil`, no timeout is used and it will perpetually wait.
-    public var receiptTimeout: TimeInterval? = 30
+    public var receiptTimeout: TimeInterval? = 15
     
     /// Determines the base headers which are added to every frame sent to the server.
     ///
@@ -123,12 +123,20 @@ public final class STOMP: StompExecutable {
     }
     
     internal func awaitReceipt(receipt: String) async throws {
-        await withUnsafeContinuation { continuation in
-            logger.debug("awaiting receipt with ID: \(receipt)", metadata: [
-                "receipt": .string(receipt)
-            ])
-            
-            communication.continuations[receipt] = continuation
+        let block: @Sendable () async throws -> Void = {
+            await withUnsafeContinuation { continuation in
+                self.logger.debug("awaiting receipt with ID: \(receipt)", metadata: [
+                    "receipt": .string(receipt)
+                ])
+                
+                self.communication.continuations[receipt] = continuation
+            }
+        }
+        
+        if let timeout = receiptTimeout {
+            try await withTimeout(seconds: timeout, operation: block)
+        } else {
+            try await block()
         }
     }
     
