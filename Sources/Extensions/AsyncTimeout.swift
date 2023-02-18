@@ -4,7 +4,7 @@
 // Copyright 2022 • Sidetrack Tech Limited
 //
 
-import Foundation.NSDate // for TimeInterval
+import Foundation
 import Logging
 
 struct TimedOutError: Error, Equatable {}
