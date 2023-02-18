@@ -7,6 +7,7 @@
 import Foundation
 import Logging
 import NIOCore
+import CoreMetrics
 
 typealias STOMPMessageReceived = (StompFrame) -> Void
 typealias STOMPErrorCaught = (Error) -> Void
@@ -25,7 +26,7 @@ final class StompHandler: ChannelInboundHandler, RemovableChannelHandler {
     }
     
     func errorCaught(context: ChannelHandlerContext, error: Error) {
-        logger.error("received error from connection: \(error.localizedDescription)")
+        logger.error("received error from connection: \(error)")
         
         context.close(promise: nil)
         communication?.onError(error)
@@ -34,10 +35,19 @@ final class StompHandler: ChannelInboundHandler, RemovableChannelHandler {
     // MARK: - Telemetry
     
     func channelActive(context: ChannelHandlerContext) {
-        logger.debug("client connected to \(context.remoteAddress?.description ?? "unknown address!")")
+        getMetric(forContext: context).record(1)
+        logger.info("client connected to \(context.remoteAddress?.description ?? "unknown address!")")
     }
     
-    func handlerRemoved(context _: ChannelHandlerContext) {
-        logger.debug("handler was removed")
+    func handlerRemoved(context: ChannelHandlerContext) {
+        getMetric(forContext: context).record(0)
+        logger.debug("handler was removed \(context.name)")
+    }
+    
+    func getMetric(forContext context: ChannelHandlerContext) -> Gauge {
+        Gauge(label: "stomp_connection_status", dimensions: [
+            ("address", context.remoteAddress?.description ?? ""),
+            ("name", context.name)
+        ])
     }
 }

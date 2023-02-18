@@ -7,6 +7,7 @@
 import Foundation
 import NIOCore
 import NIOPosix
+import Logging
 
 internal final class StompConnection {
     let host: String
@@ -22,6 +23,8 @@ internal final class StompConnection {
         self.eventLoopGroup = eventLoopGroup
         self.communication = communication
     }
+    
+    private let logger = Logger(label: LABEL_PREFIX + ".connection")
     
     let handler = StompHandler()
     var channel: Channel?
@@ -41,7 +44,13 @@ internal final class StompConnection {
                 ])
             }
         
-        channel = try await bootstrap.connect(host: host, port: port).get()
+        do {
+            logger.info("making connection attempt to \(host):\(port)")
+            channel = try await bootstrap.connect(host: host, port: port).get()
+        } catch let error as NIOConnectionError {
+            // map down to the first connection error as it's usually enough
+            throw error.connectionErrors.map { $0.error }.first ?? error
+        }
     }
     
     func stop() async throws {
@@ -62,7 +71,9 @@ internal final class StompConnection {
         heartbeat: StompHeartbeat?,
         headers: StompHeaderDictionary
     ) async throws {
-        try await start()
+        try await Task.retrying {
+            try await self.start()
+        }.value
         
         var headers = headers.adding([
             .acceptVersion: version,

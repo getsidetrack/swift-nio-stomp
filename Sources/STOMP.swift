@@ -60,7 +60,7 @@ public final class STOMP: StompExecutable {
         password: String? = nil,
         headers: StompHeaderDictionary = [:]
     ) async throws {
-        logger.debug("connection requested")
+        logger.debug("STOMP connection requested")
         try await self.connection.connect(username: username, password: password, heartbeat: heartbeat, headers: headers)
         setupHeartbeat()
     }
