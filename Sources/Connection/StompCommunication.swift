@@ -6,6 +6,7 @@
 
 import Foundation
 import Logging
+import NIOConcurrencyHelpers
 
 public typealias StompMessageCallback = @Sendable (StompFrame) async throws -> Void
 
@@ -13,9 +14,8 @@ final class StompCommunication {
     private let logger = Logger(label: LABEL_PREFIX + ".communication")
     
     var subscriptions = [String: StompMessageCallback]()
-    var recoverableSubscriptions = [StompRecoverableSubscription]()
-    var continuations = [String: UnsafeContinuation<Void, Never>]()
-    var receiptsMissed = [String]()
+    var continuations = [String: CheckedContinuation<Void, Error>]()
+    var continuationLock = NIOLock()
     
     func onError(_ error: Error) {
         logger.error("error: \(error.localizedDescription)")
@@ -41,7 +41,6 @@ final class StompCommunication {
                     "receipt": .string(id),
                 ])
                 
-                receiptsMissed.append(id)
                 return
             }
             
@@ -52,7 +51,9 @@ final class StompCommunication {
             continuation.resume()
             
             // cleanup memory
+            continuationLock.lock()
             continuations[id] = nil
+            continuationLock.unlock()
             return
         }
         

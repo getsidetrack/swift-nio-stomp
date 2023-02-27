@@ -121,20 +121,7 @@ internal final class StompConnection {
                 try await self.start()
             }.value
             
-            for subscription in self.communication.recoverableSubscriptions {
-                guard let callback = self.communication.subscriptions[subscription.id] else {
-                    self.logger.warning("unable to identify callback for subscription with ID \(subscription.id)")
-                    continue
-                }
-                
-                _ = try await self.commandable.stomp.subscribe(
-                    destination: subscription.destination,
-                    id: subscription.id,
-                    ack: subscription.ack,
-                    headers: subscription.headers,
-                    onMessage: callback
-                )
-            }
+            self.commandable.stomp.delegate?.didReconnect(client: self.commandable.stomp)
         }
     }
 }

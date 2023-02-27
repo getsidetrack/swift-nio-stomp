@@ -7,11 +7,13 @@
 import Foundation
 import Logging
 import NIOCore
+import NIOConcurrencyHelpers
 
 public final class STOMP: StompExecutable {
     private let logger = Logger(label: LABEL_PREFIX)
     private let connection: StompConnection
     private let communication: StompCommunication
+    private let subscriptionLock = NIOLock()
     
     // MARK: - Configuration
     
@@ -22,7 +24,7 @@ public final class STOMP: StompExecutable {
     ///
     /// When `true`, responses will not be returned until a receipt has been received from the server confirming the message sent has been processed.
     /// When `false` (default), responses will be returned as soon as we have sent the message to the server. We assume it has been processed.
-    public var waitForReceipt: Bool = false
+    public var waitForReceipt: Bool = true
     
     /// Determines whether or not the STOMP client should automatically reconnect to the server in the event that the connection is lost.
     ///
@@ -38,6 +40,9 @@ public final class STOMP: StompExecutable {
     ///
     /// By default, this is empty, meaning no extra headers will be sent.
     public var defaultHeaders: StompHeaderDictionary = [:]
+    
+    /// Optional delegate for receiving critical lifecycle events.
+    public var delegate: StompDelegate?
     
     // MARK: - Initialisation
     
@@ -71,14 +76,10 @@ public final class STOMP: StompExecutable {
         heartbeatTask?.cancel()
         heartbeatTask = nil
         
-        let receipt = "receipt-\(UUID().uuidString)"
-        
-        try await send(command: .DISCONNECT, headers: [
-            .receipt: receipt,
-        ], body: nil)
-        
-        try await awaitReceipt(receipt: receipt)
+        try await send(command: .DISCONNECT)
         try await connection.stop()
+        
+        communication.subscriptions.removeAll()
     }
     
     @discardableResult
@@ -92,7 +93,6 @@ public final class STOMP: StompExecutable {
         logger.debug("subscription requested")
         
         let id = id ?? UUID().uuidString
-        let receipt = "subscribe-" + UUID().uuidString
         
         let recovery = StompRecoverableSubscription(
             destination: destination,
@@ -105,55 +105,65 @@ public final class STOMP: StompExecutable {
             .id: id,
             .ack: ack.rawValue,
             .destination: destination,
-            .receipt: receipt,
         ])
         
-        communication.recoverableSubscriptions.append(recovery)
+        subscriptionLock.lock()
         communication.subscriptions[id] = closure
-        try await send(command: .SUBSCRIBE, headers: headers, body: nil)
-        try await awaitReceipt(receipt: receipt)
+        subscriptionLock.unlock()
+        
+        try await send(command: .SUBSCRIBE, headers: headers)
         
         return StompSubscription(stomp: self, subscriptionId: id)
     }
     
     public func cleanupSubscription(id: String) {
-        communication.recoverableSubscriptions.removeAll(where: { $0.id == id })
+        subscriptionLock.lock()
         communication.subscriptions[id] = nil
+        subscriptionLock.unlock()
     }
     
-    public func send(command: StompCommand, headers: StompHeaderDictionary, body: Data?) async throws {
+    public func send(command: StompCommand, headers: StompHeaderDictionary = [:], body: Data? = nil) async throws {
         let receipt = UUID().uuidString
         let headers = defaultHeaders.adding(headers).adding(
             waitForReceipt ? [ .receipt: receipt ] : [:]
         )
         
         let frame = StompClientFrame(command: command, headers: headers, body: body)
-        try await connection.send(frame: frame)
         
-        if waitForReceipt {
-            try await awaitReceipt(receipt: receipt)
+        try await awaitReceipt(receipt: receipt) {
+            try await self.connection.send(frame: frame)
         }
     }
     
-    internal func awaitReceipt(receipt: String) async throws {
-        if communication.receiptsMissed.contains(receipt) {
-            communication.receiptsMissed.removeAll(where: { $0 == receipt })
-            return
-        }
-
+    internal func awaitReceipt(receipt: String, _ closure: @escaping () async throws -> Void) async throws {
         let block: @Sendable () async throws -> Void = {
-            await withUnsafeContinuation { continuation in
+            try await withCheckedThrowingContinuation { continuation in
                 self.logger.debug("awaiting receipt with ID: \(receipt)", metadata: [
                     "receipt": .string(receipt),
                 ])
-                
+
+                self.communication.continuationLock.lock()
                 self.communication.continuations[receipt] = continuation
+                self.communication.continuationLock.unlock()
+                
+                Task.detached(priority: .high) {
+                    do {
+                        try await closure()
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
             }
         }
         
-        if let timeout = receiptTimeout {
+        if waitForReceipt == false {
+            // call closure, no waiting around
+            try await closure()
+        } else if let timeout = receiptTimeout {
+            // call block (which calls closure) but with a timeout
             try await withTimeout(seconds: timeout, operation: block)
         } else {
+            // call block (which calls closure) with no timeout
             try await block()
         }
     }
